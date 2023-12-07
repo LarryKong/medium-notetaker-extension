@@ -4,14 +4,15 @@ chrome.runtime.onInstalled.addListener(function () {
     console.log('Extension installed or updated');
 });
 
-// When extension is clicked, execute youtube_transcript.js
-chrome.action.onClicked.addListener((tab) => {
-    if (tab.url.includes("youtube.com")) {
-        chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["youtube.js"]
+// When extension is clicked, execute medium.js
+chrome.browserAction.onClicked.addListener(function() {
+    // Query all tabs with Medium articles
+    chrome.tabs.query({url: "*://*.medium.com/*"}, function(tabs) {
+        tabs.forEach(function(tab) {
+            // Send a message to the content script in this tab
+            chrome.tabs.sendMessage(tab.id, {action: "extractText"});
         });
-    }
+    });
 });
 
 // Download txt file
