@@ -1,12 +1,16 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import CopyPlugin from 'copy-webpack-plugin';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const config = {
     entry: {
         popup: './src/popup/popup.jsx',
-        background: './background.js',
-        youtube: './src/contentscript/youtube.js',
+        background: './src/background/background.js',
+        page: './src/scripts/page.js',
     },
     output: {
         path: path.resolve(__dirname, 'dist'),
@@ -28,12 +32,14 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: './src/popup/popup.html',
             filename: 'popup.html',
-    }),
+        }),
         new CopyPlugin({
             patterns: [
-            { from: "public" },
-            { from: 'src/assets', to: 'assets' },
-        ],
-    })
+                { from: "public" },
+                { from: 'src/assets', to: 'assets' },
+            ],
+        })
     ],
 };
+
+export default config;
