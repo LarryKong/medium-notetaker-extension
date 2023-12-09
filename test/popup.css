@@ -1,0 +1,4 @@
+html, body {
+    border-radius: 16px;
+    overflow: hidden; /* To ensure the content respects the border radius */
+}

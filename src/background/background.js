@@ -3,57 +3,68 @@ import { chatGPTWebBot } from '../models/ChatGPTWebBot.js';
 // Initialize the bot and start a conversation
 chatGPTWebBot.startConversation().catch(console.error);
 
-chrome.action.onClicked.addListener(function() {
-    // Query all tabs 
-    chrome.tabs.query({url:"https://pub.aimind.so/linear-algebra-that-every-data-scientist-should-know-eb585e0ef18d"}, function(tabs) {
+// Store selected tabs and user prompt
+let selectedTabs = [];
+let userPrompt = "";
+
+// Object to keep track of processed tabs
+let processedTabs = {};
+
+// Handler for messages from popup
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "processTabs") {
+        selectedTabs = message.tabIds.map(id => parseInt(id));
+        console.log(`Selected tabs: ${selectedTabs}`);
+        userPrompt = message.prompt;
+        console.log(`User prompt: ${userPrompt}`);
+        processSelectedTabs();
+    } else if (message.action === "extractedText") {
+        const extractedText = message.text;
+        // Send each extracted text along with the user prompt to ChatGPT as a single API request
+        sendExtractedTextToChatGPT(extractedText, userPrompt);
+        // Reset selected tabs and user prompt after processing
+        selectedTabs = [];
+        userPrompt = "";
+        processedTabs = {}; // Reset processed tabs
+    }
+});
+
+function processSelectedTabs() {
+    chrome.tabs.query({}, function(tabs) {
         tabs.forEach(function(tab) {
-            // Check if the tab's URL is not a chrome:// URL
-            if (!tab.url.startsWith('chrome://')) {
-                // First, try sending a message to the content script
-                chrome.tabs.sendMessage(tab.id, { action: "checkScript" }, function(response) {
-                    if (chrome.runtime.lastError || !response?.scriptInjected) {
-                        // No response or an error indicates the script isn't there yet, so inject it
-                        chrome.scripting.executeScript({
-                            target: { tabId: tab.id },
-                            files: ['page.js']
-                        }, () => {
-                            // Check for injection errors
-                            if (chrome.runtime.lastError) {
-                                console.error(`Script injection failed for tab ${tab.id}: ${chrome.runtime.lastError.message}`);
-                                return;
-                            }
-                            // After the script is injected, send the message to extract text
-                            chrome.tabs.sendMessage(tab.id, { action: "extractText" });
-                        });
-                    } else {
-                        // Script is already injected, just send the message to extract text
-                        chrome.tabs.sendMessage(tab.id, { action: "extractText" });
+            if (selectedTabs.includes(tab.id) && !tab.url.startsWith('chrome://')) {
+                if (processedTabs[tab.id]) {
+                    console.log(`Tab ${tab.id} already processed.`);
+                    return;
+                }
+                processedTabs[tab.id] = true; // Mark tab as processed
+                console.log(`Injecting script into tab ${tab.id}`);
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['extractText.js'],
+                }, () => {
+                    if (chrome.runtime.lastError) {
+                        console.error(`Script injection failed for tab ${tab.id}: ${chrome.runtime.lastError.message}`);
+                        processedTabs[tab.id] = false; // Unmark tab if script injection fails
+                        return;
                     }
+                    chrome.tabs.sendMessage(tab.id, { action: "extractText" });
                 });
             }
         });
     });
-});
+}
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "extractedText") {
-        const extractedText = message.text;
-        // Send each extracted text to ChatGPT as a single API request
-        sendExtractedTextToChatGPT(extractedText);
-    }
-});
-
-async function sendExtractedTextToChatGPT(text) {
+async function sendExtractedTextToChatGPT(text, prompt) {
     try {
         if (!chatGPTWebBot) {
             console.error('ChatGPTWebBot is not initialized');
             return;
         }
-        // Send the text to ChatGPT and await the response for each article separately
-        const response = await chatGPTWebBot.sendMessage(text);
+        const combinedText = prompt + "\n\n" + text;
+        const response = await chatGPTWebBot.sendMessage(combinedText);
         console.log('ChatGPT response:', response);
     } catch (error) {
         console.error('Error sending text to ChatGPT:', error);
     }
 }
-

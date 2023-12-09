@@ -24,12 +24,17 @@
 	},
 	"action": {
 		"default_icon": {
-			"16": "/assets/test-icon-24.png"
-		}
+			"24": "/assets/test-icon-24.png"
+		},
+		"default_popup": "popup.html"
 	},
 	"web_accessible_resources": [
 		{
-			"resources": ["page.js"],
+			"resources": ["extractText.js"],
+			"matches": ["<all_urls>"]
+		},
+		{
+			"resources": ["popupDialog.js"],
 			"matches": ["<all_urls>"]
 		}
 	]

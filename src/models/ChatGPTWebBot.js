@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 class ChatGPTWebBot {
     constructor() {
         this.accessToken = null;
-        this.parentMessageId = null; // Initialize parent message ID as null
+        this.parentMessageIds = {}; // Map to track parent message IDs for each conversation
+        this.requestMap = new Map(); // Map to track ongoing requests
     }
 
     _generateMessageId() {
@@ -12,19 +13,29 @@ class ChatGPTWebBot {
     }
 
     async startConversation() {
-        this.accessToken = await chatGPTClient.getAccessToken();
-        this.parentMessageId = this._generateMessageId(); // Reset parent message ID for a new conversation
+        try {
+            this.accessToken = await chatGPTClient.getAccessToken();
+            console.log('ChatGPTWebBot: Conversation started with new access token.');
+        } catch (error) {
+            console.error('ChatGPTWebBot: Error starting conversation:', error);
+        }
     }
 
-    async sendMessage(text) {
+    async sendMessage(text, conversationId = null) {
         try {
             if (!this.accessToken) {
                 throw new Error('Access token not found. Please start a conversation first.');
             }
 
-            const prompt = 'Please summarize the following article: ';
-            const combinedText = prompt + text;
+            // Generate a new conversation ID if not provided
+            if (!conversationId) {
+                conversationId = this._generateMessageId();
+                this.parentMessageIds[conversationId] = this._generateMessageId();
+            }
+
+            const combinedText = text;
             const messageId = this._generateMessageId(); // Generate a new message ID for each request
+            this.requestMap.set(messageId, conversationId); // Track the request
 
             const message = {
                 id: messageId,
@@ -32,29 +43,33 @@ class ChatGPTWebBot {
                 content: { content_type: 'text', parts: [combinedText] },
             };
 
+            console.log(`ChatGPTWebBot: Sending message for conversation ID ${conversationId}`);
+
             const response = await chatGPTClient.sendMessage(this.accessToken, {
                 action: 'next',
-				messages: [message],
-				parent_message_id: this.parentMessageId,  // Use the stored parent message ID
-				arkose_token: null, // Set arkose_token to null
-				conversation_mode: { kind: 'primary_assistant' },
-				// force_paragen: false,
-				// force_rate_limit: false,
-				// history_and_training_disabled: false,
+                messages: [message],
+                parent_message_id: this.parentMessageIds[conversationId],
+                arkose_token: null,
+                conversation_mode: { kind: 'primary_assistant' },
                 model: 'text-davinci-002-render-sha',
-                
-            });
+            }, messageId);
 
+            this.requestMap.delete(messageId); // Remove the request from tracking
             return response;
 
         } catch (error) {
-            console.error('Error sending message to ChatGPT:', error);
+            console.error('ChatGPTWebBot: Error sending message:', error);
+            return null; // Return null to signify an error occurred
         }
     }
 
-    resetConversation() {
-        this.accessToken = null;
-        this.parentMessageId = null;
+    resetConversation(conversationId) {
+        if (this.parentMessageIds[conversationId]) {
+            delete this.parentMessageIds[conversationId];
+            console.log(`ChatGPTWebBot: Conversation with ID ${conversationId} reset.`);
+        } else {
+            console.log(`ChatGPTWebBot: No conversation found with ID ${conversationId} to reset.`);
+        }
     }
 }
 
