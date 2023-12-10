@@ -1,5 +1,7 @@
 import { chatGPTWebBot } from '../models/ChatGPTWebBot.js';
 
+// Add for loop. Each text extract, send request to ChatGPT.
+
 // Initialize the bot and start a conversation
 chatGPTWebBot.startConversation().catch(console.error);
 

@@ -41,7 +41,7 @@ class ChatGPTClient {
 
     async sendMessage(accessToken, message, messageId) {
         try {
-            console.log('Sending request to ChatGPT:', messageId, message);
+            console.log('ChatGPTClient: Sending request to ChatGPT:', messageId, message);
             const resp = await this.fetch('https://chat.openai.com/backend-api/conversation', {
                 method: 'POST',
                 headers: {
@@ -86,7 +86,7 @@ class ChatGPTClient {
                 parsedMessage.message.metadata.timestamp_ === 'absolute' 
             ) {
                 this.relevantMessages.push({messageId, message: parsedMessage.message});
-                console.log('Relevant message:', parsedMessage.message.content);
+                console.log('Relevant message:', parsedMessage.message.content, messageId);
             }
         } catch (error) {
             console.error('Error parsing message:', error);

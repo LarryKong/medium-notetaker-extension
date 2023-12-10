@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Stack, Box, Button, Checkbox, TextareaAutosize } from '@mui/material';
 
+// prompt is ony being sent for one of the requests
+
 function Popup() {
 	const [tabs, setTabs] = useState([]);
 	const [selectedTabs, setSelectedTabs] = useState({});
